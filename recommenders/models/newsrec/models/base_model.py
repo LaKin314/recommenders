@@ -7,6 +7,7 @@ import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
 from tensorflow.compat.v1 import keras
+import wandb
 
 from recommenders.models.deeprec.deeprec_utils import cal_metric
 
@@ -186,6 +187,8 @@ class BaseModel:
         valid_behaviors_file,
         test_news_file=None,
         test_behaviors_file=None,
+        track_wand = False,
+        results_as_list = False
     ):
         """Fit the model with train_file. Evaluate the model on valid_file per epoch to observe the training status.
         If test_news_file is not None, evaluate it too.
@@ -198,6 +201,7 @@ class BaseModel:
         Returns:
             object: An instance of self.
         """
+        result_list = []
 
         for epoch in range(1, self.hparams.epochs + 1):
             step = 0
@@ -255,6 +259,17 @@ class BaseModel:
             eval_end = time.time()
             eval_time = eval_end - eval_start
 
+            # added Code here
+            if track_wand:
+                wandb_data = eval_res
+                wandb_data['logloss loss'] = epoch_loss / step
+                wandb.log(wandb_data,epoch)
+           
+            if results_as_list:
+                tmp_res = eval_res
+                tmp_res['logloss loss'] = epoch_loss / step
+                result_list.append(tmp_res)
+            # ---
             if test_news_file is not None:
                 print(
                     "at epoch {0:d}".format(epoch)
@@ -278,7 +293,8 @@ class BaseModel:
                     epoch, train_time, eval_time
                 )
             )
-
+        if results_as_list:
+            return self, result_list
         return self
 
     def group_labels(self, labels, preds, group_keys):

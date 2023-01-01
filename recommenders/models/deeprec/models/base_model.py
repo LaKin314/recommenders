@@ -7,10 +7,11 @@ import time
 import os
 import numpy as np
 import tensorflow as tf
+import wandb
 from recommenders.models.deeprec.deeprec_utils import cal_metric
 
 
-tf.compat.v1.disable_eager_execution()
+#tf.compat.v1.disable_eager_executions()
 __all__ = ["BaseModel"]
 
 
@@ -433,7 +434,7 @@ class BaseModel:
         except Exception:
             raise IOError("Failed to find any matching files for {0}".format(act_path))
 
-    def fit(self, train_file, valid_file, test_file=None):
+    def fit(self, train_file, valid_file, test_file=None,track_wand = True):
         """Fit the model with `train_file`. Evaluate the model on valid_file per epoch to observe the training status.
         If `test_file` is not None, evaluate it too.
 
@@ -449,6 +450,7 @@ class BaseModel:
             self.writer = tf.compat.v1.summary.FileWriter(
                 self.hparams.SUMMARIES_DIR, self.sess.graph
             )
+
 
         train_sess = self.sess
         for epoch in range(1, self.hparams.epochs + 1):
@@ -493,6 +495,12 @@ class BaseModel:
                     for item in [("logloss loss", epoch_loss / step)]
                 ]
             )
+            # added Code here
+            if track_wand:
+                wandb_data = eval_res
+                wandb_data['logloss loss'] = epoch_loss / step
+                wandb.log(wandb_data,epoch)
+            # ---
             eval_info = ", ".join(
                 [
                     str(item[0]) + ":" + str(item[1])
